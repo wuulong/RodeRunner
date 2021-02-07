@@ -14,6 +14,8 @@ from pyglet.window import key
 import pyglet.image
 from pyglet.image import Animation
 
+from scenario import Scenario,CellVector
+
 class Actor(cocos.sprite.Sprite):
     def __init__(self, image, x, y):
         super(Actor, self).__init__(image)
@@ -32,13 +34,34 @@ class Actor(cocos.sprite.Sprite):
     def collide(self, other):
         pass
 
+    def xy_align_bound(self):
+        pos_x = self.x // Scenario.cell_size[0]
+        pos_y = self.y // Scenario.cell_size[1]
+        pos_x,pos_y = Scenario.pos_in_bound(pos_x,pos_y)
+        self.x = (pos_x) * Scenario.cell_size[0] + Scenario.cell_size[0]/2
+        self.y = (pos_y) * Scenario.cell_size[1] + Scenario.cell_size[1]/2
+
+    def get_xy(self):
+        return eu.Vector2(self.x,self.y)
+
+class Gold(Actor):
+    def __init__(self, x, y):
+        super(Gold, self).__init__('assets/gold.png', x, y)
+
+class Enermy(Actor):
+    def __init__(self, x, y):
+        super(Enermy, self).__init__('assets/guard1.png', x, y)
+        self.speed_h = eu.Vector2(200, 0)
+        self.speed_v = eu.Vector2(0, 200)
+
 class Player(Actor):
     KEYS_PRESSED = defaultdict(int)
 
     def __init__(self, x, y):
         super(Player, self).__init__('assets/runner1.png', x, y)
-        self.speed_h = eu.Vector2(200, 0)
-        self.speed_v = eu.Vector2(0, 200)
+        self.speed_h = eu.Vector2(400, 0)
+        self.speed_v = eu.Vector2(0, 400)
+
 
         assets = "assets/"
         runner = pyglet.image.load(assets + 'runner.png')
@@ -59,43 +82,51 @@ class Player(Actor):
 
         self.last_move = ""
         self.move_act = {'d': self.anis['W'], 'a': self.anis['w'],'w': self.anis['U'], 's':self.runner_stand}
-
     def update(self, elapsed):
         pressed = Player.KEYS_PRESSED
-        """
-        space_pressed = pressed[key.SPACE] == 1
-        if PlayerShoot.INSTANCE is None and space_pressed:
-            self.parent.add(PlayerShoot(self.x, self.y + 50))
-        """
 
 
         w = self.width * 0.5
         movement_h = pressed[key.RIGHT] - pressed[key.LEFT]
-        if movement_h != 0 and w <= self.x <= self.parent.width - w:
-            self.move(self.speed_h * movement_h * elapsed)
+        env = self.parent.get_player_env()
 
-        movement_v = pressed[key.UP] - pressed[key.DOWN]
-        h = self.height * 0.5
-        if movement_v != 0 and h <= self.y <= self.parent.height - h:
-            self.move(self.speed_v * movement_v * elapsed)
-            #print("y=%i, yi=%i" %(self.y, self.y//44))
-        last_move=""
-        if movement_h!=0:
-            if movement_h>0:
-                last_move = 'd'
-            else:
-                last_move = 'a'
+        if env[1][1]==' ' and (env[0][1]==' ' or env[0][1]=='-'):
+            self.move(self.speed_v * -1 * elapsed)
+        else:
+            if movement_h != 0: # and w <= self.x <= self.parent.width - w:
+                if (movement_h>0 and env[1][2]!='#') or (movement_h<0 and env[1][0]!='#'):
+                    self.move(self.speed_h * movement_h * elapsed)
 
-        if movement_v!=0:
-            last_move = 'w'
+            movement_v = pressed[key.UP] - pressed[key.DOWN]
+            h = self.height * 0.5
+            if movement_v != 0: # and h <= self.y <= self.parent.height - h:
+                if (movement_v>0 and (env[1][1]=='H' and env[2][1]!='#')) or (movement_v<0 and (env[0][1]!='#')):
+                    self.move(self.speed_v * movement_v * elapsed)
 
-        if last_move=="":
-            last_move='s'
+            last_move=""
+            if movement_h!=0:
+                if movement_h>0:
+                    last_move = 'd'
+                else:
+                    last_move = 'a'
 
-        if last_move != self.last_move:
-            self.image = self.move_act[last_move]
-            self.last_move = last_move
+            if movement_v!=0:
+                last_move = 'w'
+
+            if last_move=="":
+                last_move='s'
+
+            if last_move != self.last_move:
+                self.image = self.move_act[last_move]
+                self.last_move = last_move
+                self.xy_align_bound()
+
 
     def collide(self, other):
-        other.kill()
-        self.kill()
+
+        if isinstance(other, Gold):
+            self.parent.gold_cnt-=1
+            self.parent.hladder_active()
+            other.kill()
+
+        #self.kill()

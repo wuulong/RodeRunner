@@ -20,15 +20,20 @@ class MainMenu(cocos.menu.Menu):
 
         self.menu_anchor_y = 'center'
         self.menu_anchor_x = 'center'
+        self.level_start = 0
 
         items = list()
         items.append(cocos.menu.MenuItem('New Game', self.on_new_game))
+        items.append(cocos.menu.EntryMenuItem('Level Start:', self.on_level_start, str(self.level_start)) )
         items.append(cocos.menu.MenuItem('Quit', pyglet.app.exit))
 
         self.create_menu(items, ac.ScaleTo(1.0, duration=3), ac.ScaleTo(1.0, duration=0.25))
+    def on_level_start(self,value):
+        if value.isnumeric():
+            self.level_start = int(value)
 
     def on_new_game(self):
-        director.push(FadeTRTransition(new_game(), duration=2))
+        director.push(FadeTRTransition(new_game(self.level_start), duration=2))
 
 
 def new_menu():
