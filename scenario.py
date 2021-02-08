@@ -20,11 +20,11 @@ class CellVector(eu.Vector2):
         return self.exp(Scenario.cell_size)+Scenario.cell_size/2
     def xy_to_pos(self):
         v= self
-        return eu.Vector2(int(v[0] // Scenario.cell_size[0]), int(v[1] // Scenario.cell_size[1]))
+        return eu.Vector2(int(v[0] // Scenario.cell_size[0]), int((v[1]-44) // Scenario.cell_size[1]))
 class Scenario(object):
     cell_size = eu.Vector2(40,44)
     map_size = eu.Vector2(28,16)
-    VERSION = "0.2"
+    VERSION = "0.3"
     INSTANCE = None
 
     def pos_in_bound(pos_x,pos_y):
@@ -56,3 +56,21 @@ class Scenario(object):
 
     def __init__(self):
         self.level_id = 0
+        self.men = self._men = 1
+        self.score = self._score = 0
+
+    @property
+    def men(self):
+        return self._men
+
+    @men.setter
+    def men(self, val):
+        self._men = val
+
+    @property
+    def score(self):
+        return self._score
+
+    @score.setter
+    def score(self, val):
+        self._score = val

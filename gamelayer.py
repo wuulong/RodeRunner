@@ -34,11 +34,8 @@ class GameLayer(cocos.layer.Layer):
         self.width = w
         self.height = h
 
-        self.score = self._score = 0
-        self.men = self._men = 3
-
         self.enermys = []
-        self.golds = []
+        #self.golds = []
         self.gold_cnt = 0
 
         assets = "assets/"
@@ -52,13 +49,18 @@ class GameLayer(cocos.layer.Layer):
                       ' ': pyglet.image.load(assets + "empty.png")
                       }
 
+        self.txt_image = pyglet.image.load(assets + 'text.png')
+        self.txt_seq = pyglet.image.ImageGrid(self.txt_image, 6, 10)
+
+
+
         self.set_level(self.sc.level_id)
 
         self.create_player()
         self.create_enermy()
         self.create_gold()
 
-        self.collman = cm.CollisionManagerGrid(0, w, 0, h, Scenario.cell_size[0], Scenario.cell_size[1])
+        self.collman = cm.CollisionManagerGrid(0, w, 0, h, Scenario.cell_size[0]//2, Scenario.cell_size[1]//2)
 
         self.schedule(self.game_loop)
 
@@ -70,14 +72,14 @@ class GameLayer(cocos.layer.Layer):
     def create_player(self):
         runner_pos = CellVector(self.get_syms_pos('&')[0])
         runner_xy = runner_pos.pos_to_xy()
-        self.player = actors.Player(runner_xy[0],runner_xy[1])
+        self.player = actors.Player(runner_xy[0],runner_xy[1]+44)
         self.add(self.player)
     def create_enermy(self):
         enermys_pos = self.get_syms_pos('0')
 
         for enermy_pos in enermys_pos:
             enermy_xy = CellVector(enermy_pos).pos_to_xy()
-            enermy = actors.Enermy(enermy_xy[0],enermy_xy[1])
+            enermy = actors.Enermy(enermy_xy[0],enermy_xy[1]+44)
             self.enermys.append(enermy)
             self.add(enermy)
 
@@ -85,8 +87,8 @@ class GameLayer(cocos.layer.Layer):
         golds_pos = self.get_syms_pos('$')
         for gold_pos in golds_pos:
             gold_xy = CellVector(gold_pos).pos_to_xy()
-            gold = actors.Gold(gold_xy[0],gold_xy[1])
-            self.golds.append(gold)
+            gold = actors.Gold(gold_xy[0],gold_xy[1]+44)
+            #self.golds.append(gold)
             self.add(gold)
             self.gold_cnt+=1
 
@@ -150,21 +152,7 @@ class GameLayer(cocos.layer.Layer):
 
         return env
 
-    @property
-    def points(self):
-        return self._men
 
-    @points.setter
-    def points(self, val):
-        self._men = val
-
-    @property
-    def score(self):
-        return self._score
-
-    @score.setter
-    def score(self, val):
-        self._score = val
     def get_syms_pos(self,sym): #ex: get player position from level definition
         start = 1
         ret = []
@@ -176,6 +164,28 @@ class GameLayer(cocos.layer.Layer):
             start = idx+1
 
         return ret
+    def txt_to_seq(self,char):
+        v = ord(char)
+        if v>=ord('0') and v<=ord('9'): #number
+            ret = 5*10 + v-ord('0')
+        elif v>=ord('A') and v<=ord('J'):
+            ret = 4*10 + v-ord('A')
+        elif v>=ord('K') and v<=ord('T'):
+            ret = 3*10 + v-ord('K')
+        elif v>=ord('U') and v<=ord('Z'):
+            ret = 2*10 + v-ord('U')
+        else:
+            return 19 # space
+        return ret
+
+    def draw_hud(self,score,men,level,pos_x,pos_y):
+        draw_txt = "SCORE%07i MEN%03i LEVEL%03i" %(score,men,level)
+        for i in range(len(draw_txt)):
+            seq = self.txt_to_seq(draw_txt[i])
+            pos_x_cur = pos_x+ i*40
+            txt_image1 = self.txt_seq.__getitem__(seq)
+            txt_image1.blit(pos_x_cur,pos_y)
+
     def draw( self ):
         display_type = ['#','H','-',' ']
         for y in range(16):
@@ -183,9 +193,11 @@ class GameLayer(cocos.layer.Layer):
                 type = self.level[x+(15-y)*28]
                 if type in display_type:
                     try:
-                        self.tiles[type].blit(x*40,y*44)
+                        self.tiles[type].blit(x*40,(y+1)*44)
                     except:
                         pass
+        self.draw_hud(self.sc.score,self.sc.men,self.sc.level_id,0,0)
+
 
     def collide(self, node):
         if node is not None:
@@ -196,9 +208,10 @@ class GameLayer(cocos.layer.Layer):
 
     def game_loop(self, dt):
         #to next level
-        if (self.player.y // Scenario.cell_size[1]) ==  Scenario.map_size[1]-1:
+        if ((self.player.y-44) // Scenario.cell_size[1]) ==  Scenario.map_size[1]-1:
             self.unschedule(self.game_loop)
-            next_level()
+            #self.end()
+            next_level(False)
             return
 
         self.collman.clear()
@@ -210,14 +223,11 @@ class GameLayer(cocos.layer.Layer):
         if self.collide(self.player):
             pass
 
-
-        self.draw()
+        #self.draw()
         self.player.draw()
 
         for _, node in self.children:
             node.update(dt)
-
-
 
     def on_key_press(self, k, _):
         actors.Player.KEYS_PRESSED[k] = 1
@@ -239,23 +249,24 @@ def new_game(level_id):
     game_layer = GameLayer(Scenario.INSTANCE)
     return cocos.scene.Scene(game_layer)
 
-def next_level():
-    new_level =  Scenario.INSTANCE.level_id+1
-    filename = "level/level-%i.txt" % (new_level)
-    if os.path.isfile(filename):
+# stay == True: stay at same level
+def next_level(stay=False):
+    if stay==False:
+        #new_level =  Scenario.INSTANCE.level_id+1
         Scenario.INSTANCE.level_id+=1
+    else:
+        #new_level =  Scenario.INSTANCE.level_id
+        pass
+    filename = "level/level-%i.txt" % (Scenario.INSTANCE.level_id)
+    if os.path.isfile(filename):
+
         game_layer = GameLayer(Scenario.INSTANCE)
         director.push(FadeTransition(cocos.scene.Scene(game_layer), duration=2))
     else:
         director.replace(SplitColsTransition(game_over(False)))
 
-
-
-
-
-
 def game_over(over=True):
-    print("game_over")
+    #print("game_over")
     w, h = director.get_window_size()
     layer = cocos.layer.Layer()
     if over:
