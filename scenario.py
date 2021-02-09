@@ -24,7 +24,7 @@ class CellVector(eu.Vector2):
 class Scenario(object):
     cell_size = eu.Vector2(40,44)
     map_size = eu.Vector2(28,16)
-    VERSION = "0.3"
+    VERSION = "0.3.1"
     INSTANCE = None
 
     def pos_in_bound(pos_x,pos_y):
@@ -47,7 +47,8 @@ class Scenario(object):
             for line in f:
                 line1 = line.replace("\"\n","")
                 line2 = line1.replace("\"","")
-                lines += line2
+                line3 = line2.replace("\n","")
+                lines += line3
             f.close()
             level_sample = "".join(lines)
         else:

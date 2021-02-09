@@ -20,7 +20,7 @@ class MainMenu(cocos.menu.Menu):
 
         self.menu_anchor_y = 'center'
         self.menu_anchor_x = 'center'
-        self.level_start = 0
+        self.level_start = 1
 
         items = list()
         items.append(cocos.menu.MenuItem('New Game', self.on_new_game))
